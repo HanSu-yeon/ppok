@@ -1,0 +1,49 @@
+word,meaning,level
+apple,사과,basic
+water,물,basic
+house,집,basic
+friend,친구,basic
+morning,아침,basic
+family,가족,basic
+money,돈,basic
+question,질문,basic
+answer,"대답, 답",basic
+window,창문,basic
+easy,쉬운,basic
+remember,기억하다,basic
+postpone,"연기하다, 미루다",intermediate
+efficient,효율적인,intermediate
+schedule,"일정, 일정을 잡다",intermediate
+deadline,마감 기한,intermediate
+colleague,동료,intermediate
+negotiate,협상하다,intermediate
+available,"이용 가능한, 시간이 되는",intermediate
+improve,"개선하다, 향상시키다",intermediate
+budget,예산,intermediate
+confirm,"확인하다, 확정하다",intermediate
+attend,참석하다,intermediate
+request,"요청, 요청하다",intermediate
+substantial,상당한,advanced
+comprehensive,"포괄적인, 종합적인",advanced
+implement,"시행하다, 구현하다",advanced
+inevitable,불가피한,advanced
+allocate,"할당하다, 배분하다",advanced
+ambiguous,모호한,advanced
+sustainable,지속 가능한,advanced
+anticipate,"예상하다, 기대하다",advanced
+consensus,"합의, 의견 일치",advanced
+mitigate,완화하다,advanced
+fluctuate,변동하다,advanced
+scrutiny,"정밀 조사, 철저한 검토",advanced
+ubiquitous,"어디에나 있는, 아주 흔한",expert
+meticulous,"꼼꼼한, 세심한",expert
+exacerbate,악화시키다,expert
+ephemeral,"수명이 짧은, 덧없는",expert
+pragmatic,실용적인,expert
+juxtapose,"나란히 놓다, 병치하다",expert
+obfuscate,"모호하게 하다, 흐리게 하다",expert
+candor,솔직함,expert
+idiosyncrasy,"특이한 성향, 특이점",expert
+circumvent,"피하다, 우회하다",expert
+perfunctory,"형식적인, 건성의",expert
+recalcitrant,"반항하는, 고집 센",expert

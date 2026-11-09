@@ -1,0 +1,120 @@
+@import 'tailwindcss';
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+
+@theme {
+  /* 한글·영문은 Pretendard, 일본어 가나·한자는 일본어 글꼴로 (맑은 고딕보다 앞에 둬야 한국식 한자 모양이 안 나온다) */
+  --font-sans: 'Pretendard Variable', Pretendard, 'Segoe UI Variable Text', 'Segoe UI', 'Yu Gothic UI', 'Meiryo UI',
+    'Hiragino Sans', 'Malgun Gothic', system-ui, sans-serif;
+
+  /* 따뜻한 뉴트럴 */
+  --color-paper: #f7f5f1;
+  --color-surface: #ffffff;
+  --color-fill: #f0ede8;
+  --color-fill-strong: #e6e2db;
+  --color-line: #e8e4de;
+  --color-ink: #23211e;
+  --color-ink-2: #5d5851;
+  --color-ink-3: #98928a;
+
+  /* 포인트: 뽁 코랄 */
+  --color-accent: #ec6a44;
+  --color-accent-strong: #d95a35;
+  --color-accent-soft: #fdeee8;
+
+  --color-learning: #b86a10;
+  --color-learning-soft: #fdf3e3;
+  --color-known: #2f7a57;
+  --color-known-soft: #e7f3ec;
+  --color-danger: #c8423a;
+
+  --shadow-card: 0 1px 2px rgb(35 33 30 / 0.04), 0 4px 16px rgb(35 33 30 / 0.05);
+  --shadow-pop: 0 1px 3px rgb(35 33 30 / 0.08), 0 8px 22px rgb(35 33 30 / 0.14);
+
+  --animate-pop-in: pop-in 240ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+  --animate-pop-out: pop-out 160ms ease-in both;
+  /* 위쪽 모서리에서는 위에서 내려오듯 */
+  --animate-pop-in-down: pop-in-down 240ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+  --animate-pop-out-up: pop-out-up 160ms ease-in both;
+  --animate-fade-in: fade-in 180ms ease-out both;
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes pop-out {
+    to {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+  @keyframes pop-in-down {
+    from {
+      opacity: 0;
+      transform: translateY(-14px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes pop-out-up {
+    to {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.98);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'ss06';
+    word-break: keep-all;
+  }
+  body {
+    @apply bg-paper font-sans text-ink;
+    margin: 0;
+    user-select: none;
+    cursor: default;
+  }
+  input,
+  textarea {
+    user-select: text;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* 팝업 창은 투명 배경 위에 카드만 그린다 */
+  html.popup,
+  html.popup body {
+    background: transparent;
+    overflow: hidden;
+  }
+}
+
+@layer components {
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-fill-strong) transparent;
+  }
+}

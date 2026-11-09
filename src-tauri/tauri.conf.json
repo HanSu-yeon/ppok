@@ -1,0 +1,61 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "뽁",
+  "mainBinaryName": "ppok",
+  "version": "0.1.0",
+  "identifier": "app.ppok.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "뽁",
+        "width": 940,
+        "height": 660,
+        "minWidth": 800,
+        "minHeight": 580,
+        "center": true,
+        "visible": false,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "resources": {
+      "resources/words/": "words/",
+      "resources/template/": "template/"
+    },
+    "shortDescription": "일하는 동안 뽁! 하고 나타나는 단어 카드",
+    "longDescription": "업무 중 일정한 간격으로 화면 오른쪽 아래에 작은 단어 카드가 나타나 자연스럽게 단어를 외우도록 돕는 앱",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "languages": [
+          "Korean",
+          "English"
+        ],
+        "displayLanguageSelector": false,
+        "installMode": "currentUser"
+      }
+    }
+  }
+}
