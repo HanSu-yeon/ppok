@@ -83,6 +83,7 @@ mockIPC((cmd, args) => {
         pausedUntil: null,
         withinHours: true,
         statusText: '다음 단어 · 15:30',
+        counting: !params.get('empty'),
         showing: false,
       } satisfies Today
     case 'list_words':

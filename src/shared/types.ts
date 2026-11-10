@@ -56,6 +56,7 @@ export interface Today {
   pausedUntil: number | null
   withinHours: boolean
   statusText: string
+  counting: boolean
   showing: boolean
 }
 

@@ -98,12 +98,14 @@ fn hm(ts: i64) -> String {
     Local.timestamp_opt(ts, 0).single().map(|d| d.format("%H:%M").to_string()).unwrap_or_default()
 }
 
-pub fn status_text(app: &AppHandle) -> (String, bool) {
+/// (상태 문구, 쉬는 중인지, 다음 카드까지 시간을 세는 중인지)
+pub fn status_text(app: &AppHandle) -> (String, bool, bool) {
     let s = app.state::<AppState>();
     let s = s.lock();
     let t = now();
     let paused = s.settings.is_paused(t);
     let no_words = srs::pool_counts(&s.conn, &s.settings, t).map(|c| c.total == 0).unwrap_or(false);
+    let mut counting = false;
     let text = if !s.settings.onboarded {
         "설정을 마치면 시작돼요".to_string()
     } else if no_words {
@@ -116,17 +118,22 @@ pub fn status_text(app: &AppHandle) -> (String, bool) {
             None => String::new(),
         }
     } else if !s.settings.within_hours_now() {
-        format!("알림 시간대 밖 · {}부터", s.settings.hours_start)
+        format!("알림 시간대 밖 · {}부터 다시 나와요", s.settings.hours_start)
+    } else if s.current.is_some() {
+        "단어 카드가 떠 있어요".to_string()
+    } else if s.held_fullscreen {
+        "전체 화면이 켜져 있어서 끝나면 나와요".to_string()
     } else {
+        counting = true;
         format!("다음 단어 · {}", hm(s.next_popup_at().max(t)))
     };
-    (text, paused)
+    (text, paused, counting)
 }
 
 /// 상태 줄과 일시정지/재개 메뉴를 현재 상태에 맞춘다. 바뀐 경우에만 갱신.
 pub fn refresh(app: &AppHandle) {
     let Some(items) = app.try_state::<TrayItems>() else { return };
-    let (text, paused) = status_text(app);
+    let (text, paused, _) = status_text(app);
     let mut last = items.last_status.lock().unwrap_or_else(|e| e.into_inner());
     if *last == text {
         return;

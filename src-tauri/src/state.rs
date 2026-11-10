@@ -28,6 +28,8 @@ pub struct Inner {
     pub last_word: Option<i64>,
     pub last_corner: Option<Corner>,
     pub seq: u64,
+    /// 나올 시간이 됐지만 전체 화면 앱 때문에 미루고 있는 중
+    pub held_fullscreen: bool,
 }
 
 /// DB 연결과 실행 중 상태를 하나의 잠금으로 묶어 잠금 순서 문제를 없앤다.
@@ -44,6 +46,7 @@ impl AppState {
             last_word: None,
             last_corner: None,
             seq: 0,
+            held_fullscreen: false,
         }))
     }
 

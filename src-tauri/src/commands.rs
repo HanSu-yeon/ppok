@@ -135,12 +135,14 @@ pub struct Today {
     paused_until: Option<i64>,
     within_hours: bool,
     status_text: String,
+    /// true면 화면이 nextPopupAt까지 남은 시간을 실시간으로 센다
+    counting: bool,
     showing: bool,
 }
 
 #[tauri::command]
 pub fn get_today(app: AppHandle, state: State<AppState>) -> Result<Today> {
-    let (status_text, _) = tray::status_text(&app);
+    let (status_text, _, counting) = tray::status_text(&app);
     let s = state.lock();
     let t = now();
     Ok(Today {
@@ -151,6 +153,7 @@ pub fn get_today(app: AppHandle, state: State<AppState>) -> Result<Today> {
         paused_until: s.settings.paused_until.filter(|u| *u > t),
         within_hours: s.settings.within_hours_now(),
         status_text,
+        counting,
         showing: s.current.is_some(),
     })
 }

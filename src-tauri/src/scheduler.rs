@@ -1,4 +1,4 @@
-//! 15초마다 팝업을 띄울 때인지 판단한다. 메인 창이 닫혀 있어도 동작한다.
+//! 5초마다 팝업을 띄울 때인지 판단한다. 메인 창이 닫혀 있어도 동작한다.
 
 use std::thread;
 use std::time::Duration;
@@ -10,7 +10,7 @@ use crate::srs::Answer;
 use crate::state::AppState;
 use crate::{engine, now, platform, tray};
 
-const TICK: Duration = Duration::from_secs(15);
+const TICK: Duration = Duration::from_secs(5);
 /// 팝업이 응답 없이 이 시간 넘게 떠 있으면 자동으로 사라진 것으로 처리한다.
 const STALE_POPUP_SECS: i64 = 10 * 60;
 
@@ -50,13 +50,16 @@ fn tick(app: &AppHandle) -> Result<()> {
     if let Some(word_id) = stale_word {
         engine::answer(app, word_id, Answer::Timeout)?;
     }
-    if due {
-        if platform::should_suppress_popup() {
-            // 전체 화면 중에는 건너뛰고 다음 틱에 다시 확인한다.
-            log::info!("전체 화면 앱 실행 중 — 팝업 보류");
-        } else {
-            engine::show_next(app)?;
-        }
+    // 전체 화면 중에는 건너뛰고 다음 틱에 다시 확인한다. 화면에 이유를 보여주도록 상태를 남긴다.
+    let held = due && platform::should_suppress_popup();
+    let was_held = std::mem::replace(&mut state.lock().held_fullscreen, held);
+    if held && !was_held {
+        log::info!("전체 화면 앱 실행 중이라 팝업 보류");
+    }
+    if due && !held {
+        engine::show_next(app)?;
+    } else if held != was_held {
+        engine::emit_changed(app);
     }
     tray::refresh(app);
     Ok(())

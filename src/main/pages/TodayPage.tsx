@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, errorText } from '../../shared/api'
-import { intervalLabel, LANGUAGE_LABEL, LEVEL_LABEL, MODE_LABEL, SOURCE_LABEL } from '../../shared/labels'
+import { hm, intervalLabel, LANGUAGE_LABEL, LEVEL_LABEL, MODE_LABEL, SOURCE_LABEL } from '../../shared/labels'
 import type { Today } from '../../shared/types'
 import { Button, cx, Panel } from '../../shared/ui'
 import type { Page } from '../App'
@@ -35,6 +35,8 @@ export default function TodayPage({ onNavigate }: { onNavigate: (p: Page) => voi
 
   if (!today) return null
   const paused = today.pausedUntil != null
+  const dotColor =
+    today.pool.total === 0 ? 'bg-learning' : today.counting || today.showing ? 'bg-known' : 'bg-fill-strong'
   const rate = Math.min(1, today.goal ? today.known / today.goal : 0)
   const scope = s.source === 'user' ? SOURCE_LABEL.user : `${LANGUAGE_LABEL[s.language]} ${LEVEL_LABEL[s.level] ?? ''}`
 
@@ -44,8 +46,8 @@ export default function TodayPage({ onNavigate }: { onNavigate: (p: Page) => voi
         <div>
           <h1 className="text-[26px] font-bold tracking-tight">오늘도 단어 하나, 뽁!</h1>
           <p className="mt-1.5 flex items-center gap-2 text-sm text-ink-2">
-            <span className={cx('size-2 rounded-full', today.pool.total === 0 ? 'bg-learning' : paused || !today.withinHours ? 'bg-fill-strong' : 'bg-known')} />
-            {today.statusText}
+            <span className={cx('size-2 rounded-full', dotColor)} />
+            {today.counting ? <Countdown at={today.nextPopupAt} /> : today.statusText}
           </p>
         </div>
         <div className="flex gap-2">
@@ -113,6 +115,27 @@ export default function TodayPage({ onNavigate }: { onNavigate: (p: Page) => voi
         />
         <Row label="팝업" value={`${intervalLabel(s.intervalMin)}마다 · ${MODE_LABEL[s.mode]} · ${s.popupSeconds}초 표시`} action={() => onNavigate('settings')} />
       </Panel>
+    </>
+  )
+}
+
+/** 다음 카드까지 남은 시간을 1초마다 줄여 보여준다 */
+function Countdown({ at }: { at: number }) {
+  const [now, setNow] = useState(() => Date.now() / 1000)
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now() / 1000), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const left = Math.ceil(at - now)
+  if (left <= 0) return <>곧 다음 단어가 나와요</>
+  const h = Math.floor(left / 3600)
+  const m = Math.floor((left % 3600) / 60)
+  const s = left % 60
+  const text = h > 0 ? `${h}시간 ${m}분` : m > 0 ? `${m}분 ${s}초` : `${s}초`
+  return (
+    <>
+      다음 단어까지 <b className="font-semibold text-ink tabular-nums">{text}</b>
+      <span className="text-ink-3">· {hm(at)}</span>
     </>
   )
 }
