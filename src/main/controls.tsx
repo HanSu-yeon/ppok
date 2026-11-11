@@ -1,7 +1,18 @@
 // 온보딩과 설정 화면이 함께 쓰는 입력 묶음
 
 import { useState } from 'react'
-import { GOAL_PRESETS, INTERVAL_PRESETS, intervalLabel, LANGUAGE_LABEL, langOf, LEVEL_DESC, LEVEL_LABEL } from '../shared/labels'
+import {
+  GOAL_PRESETS,
+  INTERVAL_PRESETS,
+  intervalLabel,
+  LANGUAGE_LABEL,
+  langOf,
+  LEVEL_DESC,
+  LEVEL_LABEL,
+  POPUP_SECONDS_PRESETS,
+  presetsWith,
+  secondsLabel,
+} from '../shared/labels'
 import type { LanguageInfo, Mode, Settings, Source } from '../shared/types'
 import { Choice, cx, Segmented, Toggle } from '../shared/ui'
 
@@ -127,12 +138,12 @@ export function IntervalPicker({ value, onChange }: { value: number; onChange: P
         <label className="flex items-center gap-1.5 text-[13px] text-ink-2">
           <input
             type="number"
-            min={5}
+            min={1}
             max={240}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={() => {
-              const n = Math.min(240, Math.max(5, Math.round(Number(draft) || 30)))
+              const n = Math.min(240, Math.max(1, Math.round(Number(draft) || 30)))
               setDraft(String(n))
               onChange({ intervalMin: n })
             }}
@@ -149,8 +160,18 @@ export function GoalPicker({ value, onChange }: { value: number; onChange: Patch
   return (
     <Segmented
       value={value}
-      options={GOAL_PRESETS.map((g) => ({ value: g, label: `${g}개` }))}
+      options={presetsWith(GOAL_PRESETS, value).map((g) => ({ value: g, label: `${g}개` }))}
       onChange={(v) => onChange({ dailyGoal: v })}
+    />
+  )
+}
+
+export function PopupSecondsPicker({ value, onChange }: { value: number; onChange: Patch }) {
+  return (
+    <Segmented
+      value={value}
+      options={presetsWith(POPUP_SECONDS_PRESETS, value).map((s) => ({ value: s, label: secondsLabel(s) }))}
+      onChange={(v) => onChange({ popupSeconds: v })}
     />
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, errorText } from '../../shared/api'
-import { hm, intervalLabel, LANGUAGE_LABEL, LEVEL_LABEL, MODE_LABEL, SOURCE_LABEL } from '../../shared/labels'
+import { hm, intervalLabel, LANGUAGE_LABEL, LEVEL_LABEL, MODE_LABEL, secondsLabel, SOURCE_LABEL } from '../../shared/labels'
 import type { Today } from '../../shared/types'
 import { Button, cx, Panel } from '../../shared/ui'
 import type { Page } from '../App'
@@ -113,7 +113,7 @@ export default function TodayPage({ onNavigate }: { onNavigate: (p: Page) => voi
             </>
           }
         />
-        <Row label="팝업" value={`${intervalLabel(s.intervalMin)}마다 · ${MODE_LABEL[s.mode]} · ${s.popupSeconds}초 표시`} action={() => onNavigate('settings')} />
+        <Row label="팝업" value={`${intervalLabel(s.intervalMin)}마다 · ${MODE_LABEL[s.mode]} · ${secondsLabel(s.popupSeconds)} 표시`} action={() => onNavigate('settings')} />
       </Panel>
     </>
   )
