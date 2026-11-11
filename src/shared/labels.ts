@@ -39,8 +39,18 @@ export const STATUS_LABEL: Record<WordStatus, string> = {
   known: '외운 단어',
 }
 
-export const INTERVAL_PRESETS = [15, 30, 60]
-export const GOAL_PRESETS = [5, 10, 20]
+export const INTERVAL_PRESETS = [1, 3, 5, 10]
+export const POPUP_SECONDS_PRESETS = [10, 20, 30, 60]
+export const GOAL_PRESETS = [30, 50, 100]
+
+/** 예전에 저장한 값이 프리셋에 없어도 선택된 채로 보이게 끼워 넣는다 */
+export function presetsWith(presets: number[], current: number) {
+  return presets.includes(current) ? presets : [...presets, current].sort((a, b) => a - b)
+}
+
+export function secondsLabel(sec: number) {
+  return sec % 60 === 0 ? `${sec / 60}분` : `${sec}초`
+}
 
 export function intervalLabel(min: number) {
   if (min % 60 === 0) return `${min / 60}시간`

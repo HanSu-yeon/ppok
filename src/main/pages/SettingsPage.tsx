@@ -2,8 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { api, errorText } from '../../shared/api'
 import { hm, LANGUAGE_LABEL } from '../../shared/labels'
 import type { SeedReport, Settings } from '../../shared/types'
-import { Button, Field, Panel, Segmented, Toggle } from '../../shared/ui'
-import { CornerPicker, GoalPicker, HoursPicker, IntervalPicker, LanguagePicker, levelHint, LevelPicker, ModePicker, SourcePicker } from '../controls'
+import { Button, Field, Panel, Toggle } from '../../shared/ui'
+import { CornerPicker, GoalPicker, HoursPicker, IntervalPicker, LanguagePicker, levelHint, LevelPicker, ModePicker, PopupSecondsPicker, SourcePicker } from '../controls'
 import { useStore } from '../store'
 
 /** Rust의 i64::MAX(다시 켤 때까지)는 JS에서 정밀도가 깨지므로 충분히 먼 미래인지로 판단한다. */
@@ -82,7 +82,7 @@ export default function SettingsPage() {
           <IntervalPicker value={s.intervalMin} onChange={patch} />
         </Field>
         <Field label="표시 시간" hint="마우스를 올려 두면 사라지지 않아요">
-          <Segmented value={s.popupSeconds} options={[5, 10, 15, 20].map((n) => ({ value: n, label: `${n}초` }))} onChange={(v) => patch({ popupSeconds: v })} />
+          <PopupSecondsPicker value={s.popupSeconds} onChange={patch} />
         </Field>
         <Block label="등장 위치" hint="작업 표시줄을 피해서 화면 모서리에 나타나요">
           <CornerPicker value={s.popupCorner} onChange={(v) => patch({ popupCorner: v })} />
