@@ -104,13 +104,19 @@ pub fn status_text(app: &AppHandle) -> (String, bool, bool) {
     let s = s.lock();
     let t = now();
     let paused = s.settings.is_paused(t);
-    let no_words = srs::pool_counts(&s.conn, &s.settings, t).map(|c| c.total == 0).unwrap_or(false);
+    let pool = srs::pool_counts(&s.conn, &s.settings).ok();
+    let no_words = pool.as_ref().is_some_and(|c| c.total == 0);
+    // 복습을 꺼 두면 '외웠어' 단어는 다시 나오지 않으니, 다 외우면 더 보여줄 단어가 없다.
+    let all_known =
+        !s.settings.review_known && pool.as_ref().is_some_and(|c| c.total > 0 && c.known == c.total);
     let mut counting = false;
     let text = if !s.settings.onboarded {
         "설정을 마치면 시작돼요".to_string()
     } else if no_words {
         // 단어장을 끄거나 지워서 출제할 단어가 없으면 '다음 단어' 대신 이걸 알려 준다.
         "보여줄 단어가 없어요 · 단어장을 확인해 주세요".to_string()
+    } else if all_known {
+        "단어장의 단어를 다 외웠어요 · 설정에서 복습을 켜 보세요".to_string()
     } else if paused {
         match s.settings.paused_until {
             Some(PAUSE_FOREVER) => "쉬는 중".to_string(),

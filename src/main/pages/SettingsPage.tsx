@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { api, errorText } from '../../shared/api'
-import { hm, LANGUAGE_LABEL } from '../../shared/labels'
+import { againAfterHint, hm, LANGUAGE_LABEL } from '../../shared/labels'
 import type { SeedReport, Settings } from '../../shared/types'
 import { Button, Field, Panel, Toggle } from '../../shared/ui'
-import { CornerPicker, GoalPicker, HoursPicker, IntervalPicker, LanguagePicker, levelHint, LevelPicker, ModePicker, PopupSecondsPicker, SourcePicker } from '../controls'
+import { AgainAfterPicker, CornerPicker, GoalPicker, HoursPicker, IntervalPicker, LanguagePicker, levelHint, LevelPicker, ModePicker, PopupSecondsPicker, SourcePicker } from '../controls'
 import { useStore } from '../store'
 
 /** Rust의 i64::MAX(다시 켤 때까지)는 JS에서 정밀도가 깨지므로 충분히 먼 미래인지로 판단한다. */
@@ -75,6 +75,12 @@ export default function SettingsPage() {
         <Block label="암기 방식">
           <ModePicker value={s.mode} onChange={patch} />
         </Block>
+        <Block label="다시 볼 단어가 나오는 때" hint={againAfterHint(s.againAfter, s.intervalMin)}>
+          <AgainAfterPicker value={s.againAfter} onChange={patch} />
+        </Block>
+        <Field label="외운 단어도 가끔 다시 보기" hint="켜 두면 팝업 10번에 1번쯤 외운 단어가 섞여 나와요">
+          <Toggle checked={s.reviewKnown} label="외운 단어도 가끔 다시 보기" onChange={(v) => patch({ reviewKnown: v })} />
+        </Field>
       </Section>
 
       <Section title="팝업">

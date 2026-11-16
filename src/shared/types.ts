@@ -23,6 +23,10 @@ export interface Settings {
   hoursEnd: string
   pausedUntil: number | null
   autostart: boolean
+  /** '다시 볼래' 단어가 다른 단어를 몇 개 본 뒤에 돌아올지. 0이면 한 바퀴 뒤 */
+  againAfter: number
+  /** 외운 단어도 가끔 섞어서 보여줄지 */
+  reviewKnown: boolean
 }
 
 export interface LevelCount {

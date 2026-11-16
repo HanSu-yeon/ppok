@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import {
+  AGAIN_AFTER_PRESETS,
+  againAfterLabel,
   GOAL_PRESETS,
   INTERVAL_PRESETS,
   intervalLabel,
@@ -164,6 +166,11 @@ export function GoalPicker({ value, onChange }: { value: number; onChange: Patch
       onChange={(v) => onChange({ dailyGoal: v })}
     />
   )
+}
+
+export function AgainAfterPicker({ value, onChange }: { value: number; onChange: Patch }) {
+  const presets = AGAIN_AFTER_PRESETS.includes(value) ? AGAIN_AFTER_PRESETS : [value, ...AGAIN_AFTER_PRESETS]
+  return <Segmented value={value} options={presets.map((n) => ({ value: n, label: againAfterLabel(n) }))} onChange={(v) => onChange({ againAfter: v })} />
 }
 
 export function PopupSecondsPicker({ value, onChange }: { value: number; onChange: Patch }) {
