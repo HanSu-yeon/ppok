@@ -42,6 +42,16 @@ export const STATUS_LABEL: Record<WordStatus, string> = {
 export const INTERVAL_PRESETS = [1, 3, 5, 10]
 export const POPUP_SECONDS_PRESETS = [10, 20, 30, 60]
 export const GOAL_PRESETS = [30, 50, 100]
+/** 0은 '한 바퀴 뒤' */
+export const AGAIN_AFTER_PRESETS = [20, 50, 100, 0]
+
+export const againAfterLabel = (n: number) => (n === 0 ? '한 바퀴 뒤' : `${n}개 뒤`)
+
+/** 지금 팝업 간격으로 '다시 볼래' 단어가 대략 언제 돌아오는지 */
+export function againAfterHint(againAfter: number, intervalMin: number) {
+  if (againAfter === 0) return '안 외운 단어를 한 바퀴 다 본 뒤에 다시 나와요'
+  return `지금 간격이면 약 ${intervalLabel(againAfter * intervalMin)} 뒤에 다시 나와요`
+}
 
 /** 예전에 저장한 값이 프리셋에 없어도 선택된 채로 보이게 끼워 넣는다 */
 export function presetsWith(presets: number[], current: number) {

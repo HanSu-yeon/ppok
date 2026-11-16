@@ -29,7 +29,7 @@ pub fn show_next(app: &AppHandle) -> Result<bool> {
         }
         let t = now();
         s.last_popup_at = t;
-        let Some(card) = srs::next_card(&s.conn, &s.settings, t, s.last_word)? else {
+        let Some(card) = srs::next_card(&s.conn, &s.settings, s.last_word)? else {
             drop(s);
             emit_changed(app);
             return Ok(false);
@@ -59,7 +59,7 @@ pub fn answer(app: &AppHandle, word_id: i64, answer: Answer) -> Result<()> {
     let state = app.state::<AppState>();
     {
         let mut s = state.lock();
-        srs::answer(&s.conn, word_id, answer, now())?;
+        srs::answer(&s.conn, &s.settings, word_id, answer, now())?;
         if s.current.as_ref().is_some_and(|c| c.card.word_id == word_id) {
             s.current = None;
         }

@@ -4,7 +4,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::error::Result;
 
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 pub fn open(path: &Path) -> Result<Connection> {
     let conn = Connection::open(path)?;
@@ -80,6 +80,15 @@ fn migrate(conn: &Connection) -> Result<()> {
     if version < 2 {
         // 일본어 등 읽기(후리가나)가 필요한 언어용. 영어와 내 단어장은 NULL.
         conn.execute_batch("ALTER TABLE words ADD COLUMN reading TEXT;")?;
+    }
+    if version < 3 {
+        // '다시 볼래' 단어가 돌아올 차례를 시간(due_at) 대신 본 단어 수로 잰다.
+        // 이미 '다시 볼래' 상태인 단어는 바로 다시 나올 수 있게 0으로 둔다.
+        conn.execute_batch(
+            "ALTER TABLE progress ADD COLUMN due_seq INTEGER;
+             UPDATE progress SET due_seq = 0 WHERE status = 'learning';
+             CREATE INDEX IF NOT EXISTS progress_due_seq ON progress(status, due_seq);",
+        )?;
     }
     conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     Ok(())

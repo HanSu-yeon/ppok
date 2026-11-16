@@ -148,7 +148,7 @@ pub fn get_today(app: AppHandle, state: State<AppState>) -> Result<Today> {
     Ok(Today {
         day: srs::day_stats(&s.conn, engine::today_start())?,
         goal: s.settings.daily_goal,
-        pool: srs::pool_counts(&s.conn, &s.settings, t)?,
+        pool: srs::pool_counts(&s.conn, &s.settings)?,
         next_popup_at: s.next_popup_at(),
         paused_until: s.settings.paused_until.filter(|u| *u > t),
         within_hours: s.settings.within_hours_now(),

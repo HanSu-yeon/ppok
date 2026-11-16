@@ -69,6 +69,10 @@ pub struct Settings {
     /// unix 초. `PAUSE_FOREVER`면 직접 재개할 때까지.
     pub paused_until: Option<i64>,
     pub autostart: bool,
+    /// '다시 볼래' 단어가 다른 단어를 몇 개 본 뒤에 돌아올지. 0이면 안 외운 단어를 한 바퀴 다 본 뒤.
+    pub again_after: u32,
+    /// 켜 두면 '외웠어' 단어도 가끔(`srs::REVIEW_EVERY`번에 1번) 섞여 나온다.
+    pub review_known: bool,
 }
 
 pub const PAUSE_FOREVER: i64 = i64::MAX;
@@ -90,6 +94,8 @@ impl Default for Settings {
             hours_end: "18:00".into(),
             paused_until: None,
             autostart: false,
+            again_after: 100,
+            review_known: false,
         }
     }
 }
@@ -116,6 +122,7 @@ impl Settings {
         self.interval_min = self.interval_min.clamp(1, 24 * 60);
         self.daily_goal = self.daily_goal.clamp(1, 500);
         self.popup_seconds = self.popup_seconds.clamp(3, 120);
+        self.again_after = self.again_after.min(1000);
         for t in [&self.hours_start, &self.hours_end] {
             if parse_hm(t).is_none() {
                 return Err(Error::msg("시간 형식은 HH:MM 이에요"));

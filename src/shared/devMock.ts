@@ -21,6 +21,8 @@ const settings: Settings = {
   hoursEnd: '18:00',
   pausedUntil: null,
   autostart: false,
+  againAfter: 100,
+  reviewKnown: false,
 }
 
 const words: WordRow[] = [

@@ -1,4 +1,9 @@
-//! 간격 반복(라이트너 박스)과 다음 단어 선택.
+//! 외웠어 / 다시 볼래 처리와 다음 단어 선택.
+//!
+//! '외웠어'를 누른 단어는 다시 나오지 않는다. 설정에서 복습을 켜면 가끔 섞여 나온다.
+//! '다시 볼래'를 누른 단어는 시간이 아니라 그 뒤에 본 단어 수로 돌아온다. 팝업 간격을
+//! 1분으로 두든 30분으로 두든 그 사이에 다른 단어를 충분히 보고 와야
+//! "방금 봐서 아는 느낌"이 안 남는다.
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
@@ -6,12 +11,11 @@ use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::settings::{Settings, Source};
 
-/// '외웠어'를 누를 때마다 박스가 올라가며 다음 복습까지의 간격(일).
-const KNOWN_INTERVAL_DAYS: [i64; 6] = [1, 3, 7, 14, 30, 60];
-/// '다시 볼래' 후 다시 출제 대상이 되기까지(초).
-pub const AGAIN_DELAY_SECS: i64 = 20 * 60;
+/// 복습을 켜 두면 팝업 이만큼에 1번은 외운 단어를 보여준다.
+pub const REVIEW_EVERY: i64 = 10;
 
-const DAY: i64 = 86_400;
+/// 지금까지 팝업으로 보여준 단어 수. '다시 볼래' 단어가 돌아올 차례를 이 값으로 잰다.
+const SHOWN_SEQ_KEY: &str = "shown_seq";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -44,7 +48,7 @@ pub struct Card {
     pub reading: Option<String>,
     pub meaning: String,
     pub deck_name: String,
-    /// "review" | "learning" | "new"
+    /// "new" | "learning" | "review"(외운 단어 복습)
     pub kind: String,
 }
 
@@ -74,44 +78,69 @@ pub struct PoolCounts {
     pub due: i64,
 }
 
-pub fn pool_counts(conn: &Connection, s: &Settings, now: i64) -> Result<PoolCounts> {
+fn shown_seq(conn: &Connection) -> Result<i64> {
+    Ok(conn.query_row(
+        "SELECT COALESCE((SELECT CAST(value AS INTEGER) FROM meta WHERE key = ?1), 0)",
+        [SHOWN_SEQ_KEY],
+        |r| r.get(0),
+    )?)
+}
+
+pub fn pool_counts(conn: &Connection, s: &Settings) -> Result<PoolCounts> {
     let sql = format!(
         "SELECT COUNT(*),
                 COALESCE(SUM(p.status = 'learning'), 0),
                 COALESCE(SUM(p.status = 'known'), 0),
-                COALESCE(SUM(p.status IN ('learning','known') AND p.due_at <= ?3), 0)
+                COALESCE(SUM(p.status = 'learning' AND p.due_seq <= ?3), 0)
          {}",
         pool_from(s.source)
     );
-    Ok(conn.query_row(&sql, params![s.language, s.level, now], |r| {
+    Ok(conn.query_row(&sql, params![s.language, s.level, shown_seq(conn)?], |r| {
         Ok(PoolCounts { total: r.get(0)?, learning: r.get(1)?, known: r.get(2)?, due: r.get(3)? })
     })?)
 }
 
-/// 1) 복습 예정  2) 새 단어(노출 적은 순 → 빈도순)  3) 가장 빨리 돌아올 단어.
+/// 1) 돌아올 차례가 된 '다시 볼래' 단어  2) 새 단어(노출 적은 순 → 빈도순)
+/// 3) 둘 다 없으면 가장 먼저 돌아올 '다시 볼래' 단어.
+///
+/// '외웠어' 단어는 복습을 켰을 때만 나온다. `REVIEW_EVERY`번째 팝업마다, 그리고 더 보여줄
+/// 단어가 없을 때 오래 안 본 단어부터.
 ///
 /// `exclude`는 직전에 보여준 단어 (연속 출제 방지).
-pub fn next_card(conn: &Connection, s: &Settings, now: i64, exclude: Option<i64>) -> Result<Option<Card>> {
+pub fn next_card(conn: &Connection, s: &Settings, exclude: Option<i64>) -> Result<Option<Card>> {
     let from = pool_from(s.source);
     let ex = exclude.unwrap_or(-1);
+    let seq = shown_seq(conn)?;
     let select = "SELECT w.id, w.term, w.meaning, d.name, COALESCE(p.status, 'new'), w.reading";
-    let queries = [
+    let review = format!(
+        "{select} {from} AND p.status = 'known' AND w.id != ?4
+         ORDER BY COALESCE(p.last_seen_at, 0), w.rank LIMIT 1"
+    );
+    let review_turn = s.review_known && (seq + 1) % REVIEW_EVERY == 0;
+    let mut queries: Vec<String> = Vec::with_capacity(5);
+    if review_turn {
+        queries.push(review.clone());
+    }
+    queries.extend([
         format!(
-            "{select} {from} AND p.status IN ('learning','known') AND p.due_at <= ?3 AND w.id != ?4
-             ORDER BY p.due_at LIMIT 1"
+            "{select} {from} AND p.status = 'learning' AND p.due_seq <= ?3 AND w.id != ?4
+             ORDER BY p.due_seq LIMIT 1"
         ),
         format!(
             "{select} {from} AND COALESCE(p.status, 'new') = 'new' AND w.id != ?4
              ORDER BY COALESCE(p.seen_count, 0), w.rank, w.id LIMIT 1"
         ),
         format!(
-            "{select} {from} AND w.id != ?4
-             ORDER BY COALESCE(p.due_at, 0), w.rank LIMIT 1"
+            "{select} {from} AND COALESCE(p.status, 'new') != 'known' AND w.id != ?4
+             ORDER BY COALESCE(p.due_seq, 0), w.rank LIMIT 1"
         ),
-    ];
-    for (i, sql) in queries.iter().enumerate() {
+    ]);
+    if s.review_known && !review_turn {
+        queries.push(review);
+    }
+    for sql in &queries {
         let card = conn
-            .query_row(sql, params![s.language, s.level, now, ex], |r| {
+            .query_row(sql, params![s.language, s.level, seq, ex], |r| {
                 let status: String = r.get(4)?;
                 Ok(Card {
                     word_id: r.get(0)?,
@@ -119,9 +148,9 @@ pub fn next_card(conn: &Connection, s: &Settings, now: i64, exclude: Option<i64>
                     reading: r.get(5)?,
                     meaning: r.get(2)?,
                     deck_name: r.get(3)?,
-                    kind: match (i, status.as_str()) {
-                        (_, "new") => "new",
-                        (_, "learning") => "learning",
+                    kind: match status.as_str() {
+                        "new" => "new",
+                        "learning" => "learning",
                         _ => "review",
                     }
                     .into(),
@@ -149,29 +178,40 @@ pub fn mark_shown(conn: &Connection, word_id: i64, now: i64) -> Result<()> {
          ON CONFLICT(word_id) DO UPDATE SET seen_count = seen_count + 1, last_seen_at = excluded.last_seen_at",
         params![word_id, now],
     )?;
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES (?1, '1')
+         ON CONFLICT(key) DO UPDATE SET value = CAST(value AS INTEGER) + 1",
+        [SHOWN_SEQ_KEY],
+    )?;
     log(conn, word_id, "shown", now)
 }
 
-pub fn answer(conn: &Connection, word_id: i64, answer: Answer, now: i64) -> Result<()> {
+pub fn answer(conn: &Connection, s: &Settings, word_id: i64, answer: Answer, now: i64) -> Result<()> {
     match answer {
         Answer::Known => {
-            let current: i64 = conn
-                .query_row("SELECT box FROM progress WHERE word_id = ?1", [word_id], |r| r.get(0))
-                .optional()?
-                .unwrap_or(0);
-            let next_box = (current + 1).min(KNOWN_INTERVAL_DAYS.len() as i64);
-            let due = now + KNOWN_INTERVAL_DAYS[(next_box - 1) as usize] * DAY;
             conn.execute(
-                "INSERT INTO progress(word_id, status, box, due_at) VALUES (?1, 'known', ?2, ?3)
-                 ON CONFLICT(word_id) DO UPDATE SET status = 'known', box = ?2, due_at = ?3",
-                params![word_id, next_box, due],
+                "INSERT INTO progress(word_id, status, box, due_at, due_seq) VALUES (?1, 'known', 1, NULL, NULL)
+                 ON CONFLICT(word_id) DO UPDATE SET status = 'known', box = box + 1, due_at = NULL, due_seq = NULL",
+                [word_id],
             )?;
         }
         Answer::Again => {
+            // 아직 안 외운 단어(이 단어 포함)가 적으면 그 수만큼만 기다린다. 즉 한 바퀴.
+            let active: i64 = conn.query_row(
+                &format!("SELECT COUNT(*) {} AND COALESCE(p.status, 'new') != 'known'", pool_from(s.source)),
+                params![s.language, s.level],
+                |r| r.get(0),
+            )?;
+            let lap = active - 1;
+            let gap = match s.again_after {
+                0 => lap,
+                n => (n as i64).min(lap),
+            }
+            .max(1);
             conn.execute(
-                "INSERT INTO progress(word_id, status, box, due_at) VALUES (?1, 'learning', 0, ?2)
-                 ON CONFLICT(word_id) DO UPDATE SET status = 'learning', box = 0, due_at = ?2",
-                params![word_id, now + AGAIN_DELAY_SECS],
+                "INSERT INTO progress(word_id, status, box, due_seq) VALUES (?1, 'learning', 0, ?2)
+                 ON CONFLICT(word_id) DO UPDATE SET status = 'learning', box = 0, due_seq = ?2",
+                params![word_id, shown_seq(conn)? + gap],
             )?;
         }
         // 닫거나 자동으로 사라진 단어는 학습 완료로 보지 않는다. 기록만 남긴다.
@@ -226,44 +266,137 @@ mod tests {
         conn.query_row("SELECT id FROM words WHERE term = ?1", [term], |r| r.get(0)).unwrap()
     }
 
-    #[test]
-    fn new_words_in_rank_order_and_due_first() {
-        let (conn, s) = setup();
-        let now = 1_000_000;
-        assert_eq!(next_card(&conn, &s, now, None).unwrap().unwrap().term, "apple");
+    fn add_words(conn: &Connection, n: usize) {
+        for i in 0..n {
+            let t = format!("w{i:03}");
+            conn.execute(
+                "INSERT INTO words(deck_id, term, term_key, meaning, level, rank, updated_at)
+                 VALUES (1, ?1, ?1, '뜻', 'basic', ?2, 0)",
+                params![t, 10 + i as i64],
+            )
+            .unwrap();
+        }
+    }
 
-        let apple = id(&conn, "apple");
-        mark_shown(&conn, apple, now).unwrap();
-        answer(&conn, apple, Answer::Again, now).unwrap();
-        // 아직 20분이 안 지났으니 새 단어
-        assert_eq!(next_card(&conn, &s, now + 60, Some(apple)).unwrap().unwrap().term, "book");
-        // 20분 뒤에는 복습 예정 단어가 우선
-        let c = next_card(&conn, &s, now + AGAIN_DELAY_SECS, None).unwrap().unwrap();
-        assert_eq!((c.term.as_str(), c.kind.as_str()), ("apple", "learning"));
+    /// 다음 단어를 골라 보여준 것으로 기록한다. 엔진이 하는 일과 같다.
+    fn show(conn: &Connection, s: &Settings, last: Option<i64>) -> Card {
+        let c = next_card(conn, s, last).unwrap().unwrap();
+        mark_shown(conn, c.word_id, 0).unwrap();
+        c
     }
 
     #[test]
-    fn known_grows_interval_and_timeout_is_not_learning() {
+    fn again_comes_back_after_one_lap_in_small_deck() {
+        let (conn, s) = setup();
+        let apple = id(&conn, "apple");
+        assert_eq!(show(&conn, &s, None).term, "apple");
+        answer(&conn, &s, apple, Answer::Again, 0).unwrap();
+
+        // 나머지 두 단어를 다 본 뒤에야 돌아온다.
+        let b = show(&conn, &s, Some(apple));
+        assert_eq!(b.term, "book");
+        let c = show(&conn, &s, Some(b.word_id));
+        assert_eq!(c.term, "cat");
+        let back = next_card(&conn, &s, Some(c.word_id)).unwrap().unwrap();
+        assert_eq!((back.term.as_str(), back.kind.as_str()), ("apple", "learning"));
+    }
+
+    /// '다시 볼래'를 누른 단어가 다른 단어를 정확히 `gap`개 본 뒤에 돌아오는지 확인한다.
+    fn assert_again_gap(s: &Settings, extra_words: usize, gap: i64) {
         let (conn, _) = setup();
-        let now = 1_000_000;
+        add_words(&conn, extra_words);
+        let apple = id(&conn, "apple");
+        assert_eq!(show(&conn, s, None).term, "apple");
+        answer(&conn, s, apple, Answer::Again, 0).unwrap();
+
+        let mut last = Some(apple);
+        for _ in 0..gap - 1 {
+            let c = show(&conn, s, last);
+            assert_ne!(c.word_id, apple);
+            last = Some(c.word_id);
+        }
+        assert_eq!(pool_counts(&conn, s).unwrap().due, 0);
+        let c = show(&conn, s, last);
+        assert_ne!(c.word_id, apple);
+        assert_eq!(pool_counts(&conn, s).unwrap().due, 1);
+        assert_eq!(next_card(&conn, s, Some(c.word_id)).unwrap().unwrap().word_id, apple);
+    }
+
+    #[test]
+    fn again_waits_the_chosen_number_of_cards() {
+        let s = Settings::default();
+        assert_eq!(s.again_after, 100);
+        assert_again_gap(&s, 200, 100);
+        assert_again_gap(&Settings { again_after: 20, ..Settings::default() }, 200, 20);
+        // 한 바퀴: 단어 203개 중 자기 자신을 뺀 202개를 본 뒤
+        assert_again_gap(&Settings { again_after: 0, ..Settings::default() }, 200, 202);
+    }
+
+    #[test]
+    fn review_mixes_known_words_in_every_tenth_popup() {
+        let (conn, _) = setup();
+        add_words(&conn, 30);
+        let s = Settings { review_known: true, ..Settings::default() };
+        let apple = id(&conn, "apple");
+        answer(&conn, &s, apple, Answer::Known, 0).unwrap();
+
+        let mut last = None;
+        for i in 1..=20 {
+            let c = show(&conn, &s, last);
+            if i % REVIEW_EVERY == 0 {
+                assert_eq!((c.word_id, c.kind.as_str()), (apple, "review"), "{i}번째 팝업");
+            } else {
+                assert_ne!(c.word_id, apple, "{i}번째 팝업");
+            }
+            last = Some(c.word_id);
+        }
+
+        // 복습을 끄면 외운 단어는 나오지 않는다.
+        let off = Settings::default();
+        for _ in 0..20 {
+            let c = show(&conn, &off, last);
+            assert_ne!(c.word_id, apple);
+            last = Some(c.word_id);
+        }
+    }
+
+    #[test]
+    fn review_keeps_going_when_everything_is_known() {
+        let (conn, _) = setup();
+        let s = Settings { review_known: true, ..Settings::default() };
+        for term in ["apple", "book", "cat"] {
+            answer(&conn, &s, id(&conn, term), Answer::Known, 0).unwrap();
+        }
+        let c = next_card(&conn, &s, None).unwrap().unwrap();
+        assert_eq!(c.kind, "review");
+    }
+
+    #[test]
+    fn known_never_comes_back_and_timeout_is_not_learning() {
+        let (conn, s) = setup();
         let book = id(&conn, "book");
-        mark_shown(&conn, book, now).unwrap();
-        answer(&conn, book, Answer::Timeout, now).unwrap();
+        mark_shown(&conn, book, 0).unwrap();
+        answer(&conn, &s, book, Answer::Timeout, 0).unwrap();
         let st: String =
             conn.query_row("SELECT status FROM progress WHERE word_id=?1", [book], |r| r.get(0)).unwrap();
         assert_eq!(st, "new");
 
-        answer(&conn, book, Answer::Known, now).unwrap();
-        answer(&conn, book, Answer::Known, now).unwrap();
-        let (b, due): (i64, i64) = conn
-            .query_row("SELECT box, due_at FROM progress WHERE word_id=?1", [book], |r| {
-                Ok((r.get(0)?, r.get(1)?))
-            })
-            .unwrap();
-        assert_eq!(b, 2);
-        assert_eq!(due, now + 3 * DAY);
+        for term in ["apple", "book", "cat"] {
+            answer(&conn, &s, id(&conn, term), Answer::Known, 0).unwrap();
+        }
+        // 새 단어도 '다시 볼래' 단어도 없으면 외운 단어로 돌아가지 않고 끝난다.
+        assert!(next_card(&conn, &s, None).unwrap().is_none());
 
         let st = day_stats(&conn, 0).unwrap();
-        assert_eq!((st.seen, st.known, st.again), (1, 1, 0));
+        assert_eq!((st.seen, st.known, st.again), (1, 3, 0));
+    }
+
+    #[test]
+    fn learning_rows_from_old_schema_are_due_right_away() {
+        let (conn, s) = setup();
+        let cat = id(&conn, "cat");
+        conn.execute("INSERT INTO progress(word_id, status, box, due_seq) VALUES (?1, 'learning', 0, 0)", [cat])
+            .unwrap();
+        assert_eq!(next_card(&conn, &s, None).unwrap().unwrap().term, "cat");
     }
 }
