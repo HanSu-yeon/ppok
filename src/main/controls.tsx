@@ -159,12 +159,43 @@ export function IntervalPicker({ value, onChange }: { value: number; onChange: P
 }
 
 export function GoalPicker({ value, onChange }: { value: number; onChange: Patch }) {
+  const [custom, setCustom] = useState(!GOAL_PRESETS.includes(value))
+  const [draft, setDraft] = useState(String(value))
+
   return (
-    <Segmented
-      value={value}
-      options={presetsWith(GOAL_PRESETS, value).map((g) => ({ value: g, label: `${g}개` }))}
-      onChange={(v) => onChange({ dailyGoal: v })}
-    />
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <Segmented<number | 'custom'>
+        value={custom ? 'custom' : value}
+        options={[...GOAL_PRESETS.map((g) => ({ value: g as number | 'custom', label: `${g}개` })), { value: 'custom', label: '직접 입력' }]}
+        onChange={(v) => {
+          if (v === 'custom') {
+            setCustom(true)
+            setDraft(String(value))
+          } else {
+            setCustom(false)
+            onChange({ dailyGoal: v })
+          }
+        }}
+      />
+      {custom && (
+        <label className="flex items-center gap-1.5 text-[13px] text-ink-2">
+          <input
+            type="number"
+            min={1}
+            max={500}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => {
+              const n = Math.min(500, Math.max(1, Math.round(Number(draft) || 30)))
+              setDraft(String(n))
+              onChange({ dailyGoal: n })
+            }}
+            className="h-8 w-16 rounded-[8px] border border-line bg-surface px-2 text-center text-ink"
+          />
+          개
+        </label>
+      )}
+    </div>
   )
 }
 

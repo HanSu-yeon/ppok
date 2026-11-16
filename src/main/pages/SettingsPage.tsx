@@ -93,7 +93,7 @@ export default function SettingsPage() {
         <Block label="등장 위치" hint="작업 표시줄을 피해서 화면 모서리에 나타나요">
           <CornerPicker value={s.popupCorner} onChange={(v) => patch({ popupCorner: v })} />
         </Block>
-        <Field label="하루 목표" hint="하루에 '외웠어'를 누를 단어 수예요">
+        <Field label="하루 목표" hint="하루에 외울 단어 수예요">
           <GoalPicker value={s.dailyGoal} onChange={patch} />
         </Field>
         <Field label="알림 시간대">

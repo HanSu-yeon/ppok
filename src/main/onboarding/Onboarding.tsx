@@ -94,7 +94,7 @@ export default function Onboarding() {
               <Field label="등장 간격">
                 <IntervalPicker value={draft.intervalMin} onChange={patch} />
               </Field>
-              <Field label="하루 목표" hint="하루에 '외웠어'를 누를 단어 수예요">
+              <Field label="하루 목표" hint="하루에 외울 단어 수예요">
                 <GoalPicker value={draft.dailyGoal} onChange={patch} />
               </Field>
               <Field label="알림 시간대" hint="이 시간에만 단어가 나와요">
