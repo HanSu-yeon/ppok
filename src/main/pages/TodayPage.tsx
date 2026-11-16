@@ -99,7 +99,7 @@ export default function TodayPage({ onNavigate }: { onNavigate: (p: Page) => voi
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-fill">
           <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${rate * 100}%` }} />
         </div>
-        <p className="mt-2.5 text-[13px] text-ink-3">{rate >= 1 ? '오늘 목표 달성! 남은 시간은 복습만 해도 충분해요.' : "팝업에서 '외웠어'를 누른 단어가 목표에 쌓여요."}</p>
+        <p className="mt-2.5 text-[13px] text-ink-3">{rate >= 1 ? '오늘 목표 달성! 더 외우고 싶으면 그대로 이어서 하면 돼요.' : "팝업에서 '외웠어'를 누른 단어가 목표에 쌓여요."}</p>
       </Panel>
 
       <Panel className="mt-3 divide-y divide-line px-6">

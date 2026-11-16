@@ -380,6 +380,7 @@ pub fn popup_current(state: State<AppState>) -> Option<PopupPayload> {
 }
 
 #[tauri::command]
-pub fn popup_answer(app: AppHandle, word_id: i64, action: Answer) -> Result<()> {
+/// 이번 답으로 하루 목표를 막 채웠으면 그 목표 수. 팝업이 축하 카드를 띄운다.
+pub fn popup_answer(app: AppHandle, word_id: i64, action: Answer) -> Result<Option<u32>> {
     engine::answer(&app, word_id, action)
 }

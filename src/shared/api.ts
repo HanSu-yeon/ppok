@@ -36,7 +36,8 @@ export const api = {
   dataDir: () => invoke<string>('get_data_dir'),
 
   popupCurrent: () => invoke<PopupPayload | null>('popup_current'),
-  popupAnswer: (wordId: number, action: Answer) => invoke<void>('popup_answer', { wordId, action }),
+  /** 이번 답으로 하루 목표를 막 채웠으면 그 목표 수 */
+  popupAnswer: (wordId: number, action: Answer) => invoke<number | null>('popup_answer', { wordId, action }),
 }
 
 export function errorText(e: unknown): string {

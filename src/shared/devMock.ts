@@ -100,6 +100,9 @@ mockIPC((cmd, args) => {
       return 'C:\\Users\\me\\AppData\\Roaming\\app.ppok.desktop'
     case 'popup_current':
       return card
+    case 'popup_answer':
+      // ?celebrate=1 이면 '외웠어'를 눌렀을 때 축하 카드를 미리 볼 수 있다.
+      return params.get('celebrate') && (args as { action?: string })?.action === 'known' ? settings.dailyGoal : null
     case 'plugin:event|listen':
       return 1
     default:

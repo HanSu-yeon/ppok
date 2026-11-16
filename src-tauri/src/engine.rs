@@ -55,18 +55,49 @@ pub fn show_next(app: &AppHandle) -> Result<bool> {
     Ok(true)
 }
 
-pub fn answer(app: &AppHandle, word_id: i64, answer: Answer) -> Result<()> {
+/// 하루 목표를 채웠을 때 팝업에 축하 카드를 보여주는 시간. 팝업 화면의 `CELEBRATE_MS`와 맞춘다.
+const CELEBRATE_FOR: std::time::Duration = std::time::Duration::from_millis(4000);
+
+/// 이번 '외웠어'로 오늘 목표를 막 채웠으면 그 목표 수를 돌려준다. 팝업은 그동안 축하 카드를 보여준다.
+pub fn answer(app: &AppHandle, word_id: i64, answer: Answer) -> Result<Option<u32>> {
     let state = app.state::<AppState>();
-    {
+    let reached = {
         let mut s = state.lock();
+        let since = today_start();
+        let before = match answer {
+            Answer::Known => Some(srs::day_stats(&s.conn, since)?.known),
+            _ => None,
+        };
         srs::answer(&s.conn, &s.settings, word_id, answer, now())?;
         if s.current.as_ref().is_some_and(|c| c.card.word_id == word_id) {
             s.current = None;
         }
+        let goal = s.settings.daily_goal;
+        match before {
+            Some(b) if goal_just_reached(b, srs::day_stats(&s.conn, since)?.known, goal) => Some(goal),
+            _ => None,
+        }
+    };
+    if reached.is_some() {
+        // 축하 카드를 잠깐 보여준 뒤 닫는다. 그 사이 새 단어 카드가 떴으면 그대로 둔다.
+        let app = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(CELEBRATE_FOR);
+            if app.state::<AppState>().lock().current.is_none() {
+                let _ = popup::hide(&app);
+            }
+        });
+    } else {
+        popup::hide(app)?;
     }
-    popup::hide(app)?;
     emit_changed(app);
-    Ok(())
+    Ok(reached)
+}
+
+/// 오늘 외운 단어 수가 목표 아래였다가 이번에 목표에 닿았는지. 하루에 한 번만 참이 된다.
+fn goal_just_reached(before: i64, after: i64, goal: u32) -> bool {
+    let goal = goal as i64;
+    before < goal && after >= goal
 }
 
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
@@ -120,4 +151,18 @@ pub fn today_start() -> i64 {
         .earliest()
         .map(|d| d.timestamp())
         .unwrap_or_else(|| now() - 86_400)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::goal_just_reached;
+
+    #[test]
+    fn goal_is_celebrated_once() {
+        assert!(!goal_just_reached(28, 29, 30));
+        assert!(goal_just_reached(29, 30, 30));
+        // 이미 채운 뒤에 더 외워도, 같은 단어를 또 외워도 다시 축하하지 않는다.
+        assert!(!goal_just_reached(30, 31, 30));
+        assert!(!goal_just_reached(30, 30, 30));
+    }
 }

@@ -3,18 +3,23 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../shared/api'
 import { langOf } from '../shared/labels'
 import type { Answer, PopupPayload } from '../shared/types'
-import { cx } from '../shared/ui'
+import { cx, Mark } from '../shared/ui'
 
 const KIND_LABEL: Record<PopupPayload['kind'], string> = { new: '새 단어', learning: '다시 보는 단어', review: '복습' }
 /** 마우스가 떠난 뒤나 뜻을 본 뒤에는 최소 이만큼은 더 보여준다 */
 const MIN_AFTER_INTERACTION = 4000
 const EXIT_MS = 160
+/** 하루 목표를 채웠을 때 축하 카드를 보여주는 시간. 창은 Rust 쪽(engine::CELEBRATE_FOR)에서 닫는다. */
+const CELEBRATE_MS = 4000
+
+type Celebration = { goal: number; corner: PopupPayload['corner'] }
 
 export default function Popup() {
   const [card, setCard] = useState<PopupPayload | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [progress, setProgress] = useState(1)
+  const [celebration, setCelebration] = useState<Celebration | null>(null)
   const remaining = useRef(0)
   const hovering = useRef(false)
   const finished = useRef(false)
@@ -23,6 +28,7 @@ export default function Popup() {
     if (!p) return
     setCard((prev) => {
       if (prev?.seq === p.seq) return prev
+      setCelebration(null)
       finished.current = false
       hovering.current = false
       remaining.current = p.seconds * 1000
@@ -47,7 +53,12 @@ export default function Popup() {
       finished.current = true
       setLeaving(true)
       setTimeout(() => {
-        api.popupAnswer(card.wordId, action).finally(() => setCard(null))
+        api
+          .popupAnswer(card.wordId, action)
+          .then((goal) => {
+            if (goal != null) setCelebration({ goal, corner: card.corner })
+          })
+          .finally(() => setCard(null))
       }, EXIT_MS)
     },
     [card],
@@ -71,7 +82,7 @@ export default function Popup() {
     return () => clearInterval(id)
   }, [card, finish])
 
-  if (!card) return null
+  if (!card) return celebration ? <CelebrationCard {...celebration} /> : null
 
   const reveal = () => {
     if (revealed) return
@@ -161,6 +172,38 @@ export default function Popup() {
         <div className="absolute inset-x-0 bottom-0 h-[3px] bg-fill">
           <div className="h-full bg-accent/60" style={{ width: `${progress * 100}%`, transition: 'width 100ms linear' }} />
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** 하루 목표를 막 채웠을 때 한 번 보여주는 카드 */
+function CelebrationCard({ goal, corner }: Celebration) {
+  const [leaving, setLeaving] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setLeaving(true), CELEBRATE_MS - EXIT_MS - 40)
+    return () => clearTimeout(id)
+  }, [])
+  const top = corner.startsWith('top')
+  const left = corner.endsWith('left')
+
+  return (
+    <div className={cx('flex h-screen p-4', top ? 'items-start pb-0' : 'items-end pt-0', left ? 'justify-start' : 'justify-end')}>
+      <div
+        role="status"
+        className={cx(
+          'w-[340px] rounded-[16px] border border-black/[0.06] bg-surface px-5 py-4 shadow-pop',
+          leaving ? (top ? 'animate-pop-out-up' : 'animate-pop-out') : top ? 'animate-pop-in-down' : 'animate-pop-in',
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <Mark className="size-11" />
+          <div className="min-w-0">
+            <p className="text-[11.5px] font-medium text-accent">오늘의 목표</p>
+            <p className="text-[21px] font-bold tracking-tight">{goal}개 다 외웠어요!</p>
+          </div>
+        </div>
+        <p className="mt-2.5 text-[13px] text-ink-2">더 외우고 싶으면 그대로 이어서 하면 돼요.</p>
       </div>
     </div>
   )
